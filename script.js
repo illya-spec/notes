@@ -66,7 +66,7 @@ document.addEventListener('DOMContentLoaded', () => {
         actionMenu.classList.remove('active');
     });
 
-    // --- 4. Імпорт (заглушка) ---
+    // --- 4. Імпорт ---
     btnImport.addEventListener('click', () => {
         const url = prompt("Google Doc URL:");
         if (url) {
@@ -86,22 +86,48 @@ document.addEventListener('DOMContentLoaded', () => {
         previewArea.classList.add('hidden');
     });
 
-    // --- 5. ВІДПРАВКА ТА ВИДАЛЕННЯ ---
-    function sendNote() {
+    // --- 5. ЗБЕРЕЖЕННЯ В localStorage ---
+    function saveNotes() {
+        const notes = [...notesStream.querySelectorAll('.note-container')]
+            .map(n => n.outerHTML);
+        localStorage.setItem("savedNotes", JSON.stringify(notes));
+    }
+
+    function restoreNotes() {
+        const saved = JSON.parse(localStorage.getItem("savedNotes") || "[]");
+        notesStream.innerHTML = "";
+        saved.forEach(html => notesStream.insertAdjacentHTML("beforeend", html));
+
+        // Повторна активація кнопок видалення
+        notesStream.querySelectorAll('.delete-btn').forEach(btn => {
+            btn.onclick = () => {
+                const parent = btn.closest('.note-container');
+                parent.style.opacity = "0";
+                parent.style.transform = "scale(0.9)";
+                setTimeout(() => {
+                    parent.remove();
+                    saveNotes();
+                }, 300);
+            };
+        });
+    }
+
+    restoreNotes();
+
+    // --- 6. СТВОРЕННЯ НОТАТКИ ---
+    function createNote() {
         const text = inputField.value.trim();
         if (!text && !pendingAttachment) return;
 
         const now = new Date();
         const dateStr = now.toLocaleDateString('uk-UA', { day: 'numeric', month: 'long', year: 'numeric' });
-        
-        // Створення головного контейнера
+
         const noteDiv = document.createElement('div');
         noteDiv.className = 'note-container';
 
         let attachmentHTML = '';
         let textHTML = text ? `<div>${text}</div>` : '';
 
-        // Генерація HTML для вкладень
         if (pendingAttachment) {
             if (pendingAttachment.type === 'image') {
                 attachmentHTML = `
@@ -125,8 +151,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // Заповнюємо HTML. 
-        // ЗВЕРНИ УВАГУ: Додано <button class="delete-btn">
         noteDiv.innerHTML = `
             <div class="note-date">${dateStr}</div>
             <div class="note-card">
@@ -136,32 +160,28 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
         `;
 
-        // --- ЛОГІКА ВИДАЛЕННЯ ---
-        // Знаходимо кнопку всередині тільки що створеної нотатки і вішаємо подію
-        const deleteButton = noteDiv.querySelector('.delete-btn');
-        deleteButton.addEventListener('click', () => {
-            // Ефект зникнення перед видаленням (опціонально)
-            noteDiv.style.opacity = '0';
-            noteDiv.style.transform = 'scale(0.9)';
+        // delete-кнопка
+        noteDiv.querySelector('.delete-btn').onclick = () => {
+            noteDiv.style.opacity = "0";
+            noteDiv.style.transform = "scale(0.9)";
             setTimeout(() => {
                 noteDiv.remove();
-            }, 300); // Час має співпадати з CSS transition, якщо він є, або просто видаляємо
-        });
+                saveNotes();
+            }, 300);
+        };
 
-        // Додаємо нотатку в стрічку
         notesStream.appendChild(noteDiv);
         notesStream.scrollTo({ top: notesStream.scrollHeight, behavior: 'smooth' });
 
-        // Скидання полів
         inputField.value = '';
         clearPreviewBtn.click();
-        
-        const emptyState = document.querySelector('.empty-placeholder');
-        if (emptyState) emptyState.remove();
+
+        saveNotes();
     }
 
-    sendBtn.addEventListener('click', sendNote);
+    // Події
+    sendBtn.addEventListener('click', createNote);
     inputField.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') sendNote();
+        if (e.key === 'Enter') createNote();
     });
 });
