@@ -186,6 +186,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     <a href="${pendingAttachment.url}" target="_blank" class="note-file" style="color:#4dabf7;">
                         📄 Google Doc
                     </a>`;
+            } else if (pendingAttachment.type === 'table') {
+                attachmentHTML = '';
             }
         }
 
@@ -197,6 +199,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 ${attachmentHTML}
             </div>
         `;
+
+        if (pendingAttachment?.type === 'table') {
+            noteDiv.querySelector('.note-card').appendChild(pendingAttachment.element);
+        }
 
         noteDiv.querySelector('.delete-btn').onclick = () => {
             noteDiv.style.opacity = '0';
@@ -234,38 +240,85 @@ document.addEventListener('DOMContentLoaded', () => {
             note.style.display = text.includes(query) ? '' : 'none';
         });
     });
-// =========================
-// КОНТЕКСТНЕ МЕНЮ (DOUBLE CLICK)
-// =========================
-const copyMenu = document.getElementById('copy-menu');
-let selectedText = '';
 
-document.addEventListener('dblclick', (e) => {
-    const note = e.target.closest('.note-card');
-    if (!note) return;
+    // =========================
+    // КОНТЕКСТНЕ МЕНЮ (DOUBLE CLICK)
+    // =========================
+    const copyMenu = document.getElementById('copy-menu');
+    let selectedText = '';
 
-    selectedText = note.innerText.replace('✕', '').trim();
+    document.addEventListener('dblclick', (e) => {
+        const note = e.target.closest('.note-card');
+        if (!note) return;
 
-    copyMenu.classList.remove('hidden');
-    copyMenu.style.left = e.pageX + 'px';
-    copyMenu.style.top = e.pageY + 'px';
+        selectedText = note.innerText.replace('✕', '').trim();
 
-    requestAnimationFrame(() => {
-        copyMenu.classList.add('show');
+        copyMenu.classList.remove('hidden');
+        copyMenu.style.left = e.pageX + 'px';
+        copyMenu.style.top = e.pageY + 'px';
+
+        requestAnimationFrame(() => {
+            copyMenu.classList.add('show');
+        });
+
+        setTimeout(() => {
+            copyMenu.classList.remove('show');
+            setTimeout(() => copyMenu.classList.add('hidden'), 150);
+        }, 1500);
     });
 
-    // Автоматично ховаємо меню через 2 секунди
-    setTimeout(() => {
+    copyMenu.addEventListener('click', () => {
+        navigator.clipboard.writeText(selectedText);
         copyMenu.classList.remove('show');
-        setTimeout(() => copyMenu.classList.add('hidden'), 150);
-    }, 1500);
-});
+        setTimeout(() => copyMenu.classList.add('hidden'), 200);
+    });
 
-copyMenu.addEventListener('click', () => {
-    navigator.clipboard.writeText(selectedText);
-    copyMenu.classList.remove('show');
-    setTimeout(() => copyMenu.classList.add('hidden'), 200);
-});
+// =========================
+// 9. ВСТАВКА ТАБЛИЦІ 10x10 CTRL+/
+// =========================
+inputField.addEventListener('keydown', (e) => {
+    if (e.ctrlKey && e.key === '/') {
+        e.preventDefault(); // блокуємо стандартну дію
 
-});
+        const tableContainer = document.createElement('div');
+        tableContainer.className = 'table-attachment';
+        tableContainer.style.marginTop = '10px';
+        tableContainer.style.overflowX = 'auto';
+        tableContainer.style.backgroundColor = 'transparent'; // невидимий фон
+        tableContainer.style.padding = '5px';
+        tableContainer.style.display = 'inline-block';
+        tableContainer.style.color = '#FFF'; // білий текст
 
+        const table = document.createElement('table');
+        table.style.borderCollapse = 'collapse';
+        table.style.backgroundColor = 'transparent';
+
+        for (let i = 0; i < 10; i++) {
+            const tr = document.createElement('tr');
+            for (let j = 0; j < 10; j++) {
+                const td = document.createElement('td');
+                td.contentEditable = 'true';
+                td.style.width = '25px';
+                td.style.height = '25px';
+                td.style.border = '0.3px solid rgba(255,255,255,0.3)'; // майже невидимий
+                td.style.textAlign = 'center';
+                td.style.backgroundColor = 'transparent';
+                td.style.color = '#FFF'; // білий текст
+                tr.appendChild(td);
+            }
+            table.appendChild(tr);
+        }
+
+        tableContainer.appendChild(table);
+
+        previewArea.innerHTML = '';
+        previewArea.appendChild(tableContainer);
+        previewArea.classList.remove('hidden');
+
+        pendingAttachment = {
+            type: 'table',
+            element: tableContainer
+        };
+    }
+});
+});
