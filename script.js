@@ -8,16 +8,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const actionMenu = document.querySelector('.glass-actions-menu');
     const notesStream = document.getElementById('notesStream');
 
-    // Кнопки дій
     const btnImage = document.getElementById('btnImage');
     const btnFile = document.getElementById('btnFile');
     const btnImport = document.getElementById('btnImport');
 
-    // Приховані поля
     const hiddenImageInput = document.getElementById('hiddenImageInput');
     const hiddenFileInput = document.getElementById('hiddenFileInput');
 
-    // Превʼю
     const previewArea = document.getElementById('preview-area');
     const previewImg = document.getElementById('preview-img');
     const previewText = document.getElementById('preview-text');
@@ -186,8 +183,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     <a href="${pendingAttachment.url}" target="_blank" class="note-file" style="color:#4dabf7;">
                         📄 Google Doc
                     </a>`;
-            } else if (pendingAttachment.type === 'table') {
-                attachmentHTML = '';
             }
         }
 
@@ -202,6 +197,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (pendingAttachment?.type === 'table') {
             noteDiv.querySelector('.note-card').appendChild(pendingAttachment.element);
+            lockTable(pendingAttachment.element);
         }
 
         noteDiv.querySelector('.delete-btn').onclick = () => {
@@ -227,98 +223,54 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // =========================
-    // 8. ПОШУК НОТАТОК
+    // 9. ВСТАВКА ТАБЛИЦІ 10x10 CTRL+/
     // =========================
-    const searchInput = document.querySelector('.search input');
-
-    searchInput.addEventListener('input', () => {
-        const query = searchInput.value.toLowerCase();
-        const notes = notesStream.querySelectorAll('.note-container');
-
-        notes.forEach(note => {
-            const text = note.innerText.toLowerCase();
-            note.style.display = text.includes(query) ? '' : 'none';
+    function lockTable(container) {
+        container.querySelectorAll('td').forEach(td => {
+            td.contentEditable = 'false';
+            td.style.cursor = 'default';
         });
-    });
-
-    // =========================
-    // КОНТЕКСТНЕ МЕНЮ (DOUBLE CLICK)
-    // =========================
-    const copyMenu = document.getElementById('copy-menu');
-    let selectedText = '';
-
-    document.addEventListener('dblclick', (e) => {
-        const note = e.target.closest('.note-card');
-        if (!note) return;
-
-        selectedText = note.innerText.replace('✕', '').trim();
-
-        copyMenu.classList.remove('hidden');
-        copyMenu.style.left = e.pageX + 'px';
-        copyMenu.style.top = e.pageY + 'px';
-
-        requestAnimationFrame(() => {
-            copyMenu.classList.add('show');
-        });
-
-        setTimeout(() => {
-            copyMenu.classList.remove('show');
-            setTimeout(() => copyMenu.classList.add('hidden'), 150);
-        }, 1500);
-    });
-
-    copyMenu.addEventListener('click', () => {
-        navigator.clipboard.writeText(selectedText);
-        copyMenu.classList.remove('show');
-        setTimeout(() => copyMenu.classList.add('hidden'), 200);
-    });
-
-// =========================
-// 9. ВСТАВКА ТАБЛИЦІ 10x10 CTRL+/
-// =========================
-inputField.addEventListener('keydown', (e) => {
-    if (e.ctrlKey && e.key === '/') {
-        e.preventDefault(); // блокуємо стандартну дію
-
-        const tableContainer = document.createElement('div');
-        tableContainer.className = 'table-attachment';
-        tableContainer.style.marginTop = '10px';
-        tableContainer.style.overflowX = 'auto';
-        tableContainer.style.backgroundColor = 'transparent'; // невидимий фон
-        tableContainer.style.padding = '5px';
-        tableContainer.style.display = 'inline-block';
-        tableContainer.style.color = '#FFF'; // білий текст
-
-        const table = document.createElement('table');
-        table.style.borderCollapse = 'collapse';
-        table.style.backgroundColor = 'transparent';
-
-        for (let i = 0; i < 10; i++) {
-            const tr = document.createElement('tr');
-            for (let j = 0; j < 10; j++) {
-                const td = document.createElement('td');
-                td.contentEditable = 'true';
-                td.style.width = '25px';
-                td.style.height = '25px';
-                td.style.border = '0.3px solid rgba(255,255,255,0.3)'; // майже невидимий
-                td.style.textAlign = 'center';
-                td.style.backgroundColor = 'transparent';
-                td.style.color = '#FFF'; // білий текст
-                tr.appendChild(td);
-            }
-            table.appendChild(tr);
-        }
-
-        tableContainer.appendChild(table);
-
-        previewArea.innerHTML = '';
-        previewArea.appendChild(tableContainer);
-        previewArea.classList.remove('hidden');
-
-        pendingAttachment = {
-            type: 'table',
-            element: tableContainer
-        };
     }
-});
+
+    inputField.addEventListener('keydown', (e) => {
+        if (e.ctrlKey && e.key === '/') {
+            e.preventDefault();
+
+            const tableContainer = document.createElement('div');
+            tableContainer.style.marginTop = '10px';
+            tableContainer.style.padding = '6px';
+            tableContainer.style.display = 'inline-block';
+            tableContainer.style.color = '#FFF';
+
+            const table = document.createElement('table');
+            table.style.borderCollapse = 'separate';
+            table.style.borderSpacing = '0';
+            table.style.overflow = 'hidden';
+
+            for (let i = 0; i < 10; i++) {
+                const tr = document.createElement('tr');
+                for (let j = 0; j < 10; j++) {
+                    const td = document.createElement('td');
+                    td.contentEditable = 'true';
+                    td.style.width = '26px';
+                    td.style.height = '26px';
+                    td.style.textAlign = 'center';
+                    td.style.color = '#FFF';
+                    td.style.border = '0.3px solid rgba(255,255,255,0.3)';
+                    tr.appendChild(td);
+                }
+                table.appendChild(tr);
+            }
+
+            tableContainer.appendChild(table);
+            previewArea.innerHTML = '';
+            previewArea.appendChild(tableContainer);
+            previewArea.classList.remove('hidden');
+
+            pendingAttachment = {
+                type: 'table',
+                element: tableContainer
+            };
+        }
+    });
 });
