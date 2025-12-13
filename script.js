@@ -1,12 +1,14 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // Елементи інтерфейсу
+    // =========================
+    // ЕЛЕМЕНТИ ІНТЕРФЕЙСУ
+    // =========================
     const inputField = document.getElementById('mainInput');
     const sendBtn = document.querySelector('.return-btn');
     const clipBtn = document.querySelector('.clip-btn');
     const actionMenu = document.querySelector('.glass-actions-menu');
     const notesStream = document.getElementById('notesStream');
-    
-    // Кнопки дій (кліп)
+
+    // Кнопки дій
     const btnImage = document.getElementById('btnImage');
     const btnFile = document.getElementById('btnFile');
     const btnImport = document.getElementById('btnImport');
@@ -14,96 +16,128 @@ document.addEventListener('DOMContentLoaded', () => {
     // Приховані поля
     const hiddenImageInput = document.getElementById('hiddenImageInput');
     const hiddenFileInput = document.getElementById('hiddenFileInput');
-    
-    // Зона прев'ю
+
+    // Превʼю
     const previewArea = document.getElementById('preview-area');
     const previewImg = document.getElementById('preview-img');
     const previewText = document.getElementById('preview-text');
     const clearPreviewBtn = document.getElementById('clear-preview');
 
-    let pendingAttachment = null; 
+    let pendingAttachment = null;
 
-    // --- 1. Меню скріпки ---
+    // =========================
+    // 1. МЕНЮ СКРІПКИ
+    // =========================
     clipBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         actionMenu.classList.toggle('active');
     });
+
     document.addEventListener('click', (e) => {
         if (!clipBtn.contains(e.target) && !actionMenu.contains(e.target)) {
             actionMenu.classList.remove('active');
         }
     });
 
-    // --- 2. Обробка картинок ---
+    // =========================
+    // 2. КАРТИНКИ
+    // =========================
     btnImage.addEventListener('click', () => hiddenImageInput.click());
+
     hiddenImageInput.addEventListener('change', (e) => {
         const file = e.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = (readerEvent) => {
-                pendingAttachment = { type: 'image', data: readerEvent.target.result, name: file.name };
-                previewImg.src = readerEvent.target.result;
-                previewImg.style.display = 'block';
-                previewText.textContent = file.name;
-                previewArea.classList.remove('hidden');
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            pendingAttachment = {
+                type: 'image',
+                data: ev.target.result,
+                name: file.name
             };
-            reader.readAsDataURL(file);
-        }
+            previewImg.src = ev.target.result;
+            previewImg.style.display = 'block';
+            previewText.textContent = file.name;
+            previewArea.classList.remove('hidden');
+        };
+        reader.readAsDataURL(file);
+
         actionMenu.classList.remove('active');
     });
 
-    // --- 3. Обробка файлів ---
+    // =========================
+    // 3. ФАЙЛИ
+    // =========================
     btnFile.addEventListener('click', () => hiddenFileInput.click());
+
     hiddenFileInput.addEventListener('change', (e) => {
         const file = e.target.files[0];
-        if (file) {
-            const fileUrl = URL.createObjectURL(file);
-            pendingAttachment = { type: 'file', url: fileUrl, name: file.name };
-            previewImg.style.display = 'none';
-            previewText.innerHTML = `📎 ${file.name}`;
-            previewArea.classList.remove('hidden');
-        }
+        if (!file) return;
+
+        pendingAttachment = {
+            type: 'file',
+            url: URL.createObjectURL(file),
+            name: file.name
+        };
+
+        previewImg.style.display = 'none';
+        previewText.innerHTML = `📎 ${file.name}`;
+        previewArea.classList.remove('hidden');
+
         actionMenu.classList.remove('active');
     });
 
-    // --- 4. Імпорт ---
+    // =========================
+    // 4. ІМПОРТ
+    // =========================
     btnImport.addEventListener('click', () => {
-        const url = prompt("Google Doc URL:");
-        if (url) {
-            pendingAttachment = { type: 'gdoc', url: url };
-            previewImg.style.display = 'none';
-            previewText.innerHTML = `📄 Link`;
-            previewArea.classList.remove('hidden');
-        }
+        const url = prompt('Google Doc URL:');
+        if (!url) return;
+
+        pendingAttachment = {
+            type: 'gdoc',
+            url
+        };
+
+        previewImg.style.display = 'none';
+        previewText.innerHTML = `📄 Google Doc`;
+        previewArea.classList.remove('hidden');
+
         actionMenu.classList.remove('active');
     });
 
-    // Очищення прев'ю
+    // =========================
+    // 5. ОЧИЩЕННЯ ПРЕВʼЮ
+    // =========================
     clearPreviewBtn.addEventListener('click', () => {
         pendingAttachment = null;
-        hiddenImageInput.value = "";
-        hiddenFileInput.value = "";
+        hiddenImageInput.value = '';
+        hiddenFileInput.value = '';
         previewArea.classList.add('hidden');
     });
 
-    // --- 5. ЗБЕРЕЖЕННЯ В localStorage ---
+    // =========================
+    // 6. LOCALSTORAGE
+    // =========================
     function saveNotes() {
         const notes = [...notesStream.querySelectorAll('.note-container')]
             .map(n => n.outerHTML);
-        localStorage.setItem("savedNotes", JSON.stringify(notes));
+        localStorage.setItem('savedNotes', JSON.stringify(notes));
     }
 
     function restoreNotes() {
-        const saved = JSON.parse(localStorage.getItem("savedNotes") || "[]");
-        notesStream.innerHTML = "";
-        saved.forEach(html => notesStream.insertAdjacentHTML("beforeend", html));
+        const saved = JSON.parse(localStorage.getItem('savedNotes') || '[]');
+        notesStream.innerHTML = '';
 
-        // Повторна активація кнопок видалення
+        saved.forEach(html => {
+            notesStream.insertAdjacentHTML('beforeend', html);
+        });
+
         notesStream.querySelectorAll('.delete-btn').forEach(btn => {
             btn.onclick = () => {
                 const parent = btn.closest('.note-container');
-                parent.style.opacity = "0";
-                parent.style.transform = "scale(0.9)";
+                parent.style.opacity = '0';
+                parent.style.transform = 'scale(0.9)';
                 setTimeout(() => {
                     parent.remove();
                     saveNotes();
@@ -114,39 +148,43 @@ document.addEventListener('DOMContentLoaded', () => {
 
     restoreNotes();
 
-    // --- 6. СТВОРЕННЯ НОТАТКИ ---
+    // =========================
+    // 7. СТВОРЕННЯ НОТАТКИ
+    // =========================
     function createNote() {
         const text = inputField.value.trim();
         if (!text && !pendingAttachment) return;
 
         const now = new Date();
-        const dateStr = now.toLocaleDateString('uk-UA', { day: 'numeric', month: 'long', year: 'numeric' });
+        const dateStr = now.toLocaleDateString('uk-UA', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric'
+        });
 
         const noteDiv = document.createElement('div');
         noteDiv.className = 'note-container';
 
-        let attachmentHTML = '';
         let textHTML = text ? `<div>${text}</div>` : '';
+        let attachmentHTML = '';
 
         if (pendingAttachment) {
             if (pendingAttachment.type === 'image') {
                 attachmentHTML = `
                     <div class="media-container">
-                        <a href="${pendingAttachment.data}" download="${pendingAttachment.name}" class="download-link">
+                        <a href="${pendingAttachment.data}" download="${pendingAttachment.name}">
                             <img src="${pendingAttachment.data}" class="note-image">
                         </a>
                     </div>`;
             } else if (pendingAttachment.type === 'file') {
                 attachmentHTML = `
                     <a href="${pendingAttachment.url}" download="${pendingAttachment.name}" class="note-file">
-                        <span>📎</span>
-                        <span>${pendingAttachment.name}</span>
+                        📎 ${pendingAttachment.name}
                     </a>`;
             } else if (pendingAttachment.type === 'gdoc') {
                 attachmentHTML = `
                     <a href="${pendingAttachment.url}" target="_blank" class="note-file" style="color:#4dabf7;">
-                        <span>📄</span>
-                        <span>Google Doc</span>
+                        📄 Google Doc
                     </a>`;
             }
         }
@@ -154,16 +192,15 @@ document.addEventListener('DOMContentLoaded', () => {
         noteDiv.innerHTML = `
             <div class="note-date">${dateStr}</div>
             <div class="note-card">
-                <button class="delete-btn" title="Видалити">✕</button>
+                <button class="delete-btn">✕</button>
                 ${textHTML}
                 ${attachmentHTML}
             </div>
         `;
 
-        // delete-кнопка
         noteDiv.querySelector('.delete-btn').onclick = () => {
-            noteDiv.style.opacity = "0";
-            noteDiv.style.transform = "scale(0.9)";
+            noteDiv.style.opacity = '0';
+            noteDiv.style.transform = 'scale(0.9)';
             setTimeout(() => {
                 noteDiv.remove();
                 saveNotes();
@@ -175,13 +212,60 @@ document.addEventListener('DOMContentLoaded', () => {
 
         inputField.value = '';
         clearPreviewBtn.click();
-
         saveNotes();
     }
 
-    // Події
     sendBtn.addEventListener('click', createNote);
     inputField.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') createNote();
     });
+
+    // =========================
+    // 8. ПОШУК НОТАТОК
+    // =========================
+    const searchInput = document.querySelector('.search input');
+
+    searchInput.addEventListener('input', () => {
+        const query = searchInput.value.toLowerCase();
+        const notes = notesStream.querySelectorAll('.note-container');
+
+        notes.forEach(note => {
+            const text = note.innerText.toLowerCase();
+            note.style.display = text.includes(query) ? '' : 'none';
+        });
+    });
+// =========================
+// КОНТЕКСТНЕ МЕНЮ (DOUBLE CLICK)
+// =========================
+const copyMenu = document.getElementById('copy-menu');
+let selectedText = '';
+
+document.addEventListener('dblclick', (e) => {
+    const note = e.target.closest('.note-card');
+    if (!note) return;
+
+    selectedText = note.innerText.replace('✕', '').trim();
+
+    copyMenu.classList.remove('hidden');
+    copyMenu.style.left = e.pageX + 'px';
+    copyMenu.style.top = e.pageY + 'px';
+
+    requestAnimationFrame(() => {
+        copyMenu.classList.add('show');
+    });
+
+    // Автоматично ховаємо меню через 2 секунди
+    setTimeout(() => {
+        copyMenu.classList.remove('show');
+        setTimeout(() => copyMenu.classList.add('hidden'), 150);
+    }, 1500);
 });
+
+copyMenu.addEventListener('click', () => {
+    navigator.clipboard.writeText(selectedText);
+    copyMenu.classList.remove('show');
+    setTimeout(() => copyMenu.classList.add('hidden'), 200);
+});
+
+});
+

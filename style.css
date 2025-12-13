@@ -419,3 +419,43 @@ margin-bottom: 30px;
 .blob-3 {
     animation: blobMove3 4s ease-in-out infinite;
 }
+/* --- Меню копіювання --- */
+.copy-menu {
+    position: fixed;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    padding: 5px;
+    border-radius: 12px;
+
+    opacity: 0;
+    transform: translateY(10px);
+    pointer-events: none;
+
+    transition: opacity 0.25s ease, transform 0.25s ease;
+    z-index: 9999;
+    cursor: pointer;
+}
+
+.copy-menu img.copy-icon {
+    width: 20px;
+    height: 20px;
+}
+
+.copy-menu span {
+    font-size: 14px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+/* Активний стан */
+.copy-menu.show {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
+.hidden {
+    display: none;
+}
