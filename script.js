@@ -1,7 +1,4 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // =========================
-    // ЕЛЕМЕНТИ ІНТЕРФЕЙСУ
-    // =========================
     const inputField = document.getElementById('mainInput');
     const sendBtn = document.querySelector('.return-btn');
     const clipBtn = document.querySelector('.clip-btn');
@@ -22,9 +19,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let pendingAttachment = null;
 
-    // =========================
-    // 1. МЕНЮ СКРІПКИ
-    // =========================
     clipBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         actionMenu.classList.toggle('active');
@@ -36,9 +30,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // =========================
-    // 2. КАРТИНКИ
-    // =========================
     btnImage.addEventListener('click', () => hiddenImageInput.click());
 
     hiddenImageInput.addEventListener('change', (e) => {
@@ -62,9 +53,6 @@ document.addEventListener('DOMContentLoaded', () => {
         actionMenu.classList.remove('active');
     });
 
-    // =========================
-    // 3. ФАЙЛИ
-    // =========================
     btnFile.addEventListener('click', () => hiddenFileInput.click());
 
     hiddenFileInput.addEventListener('change', (e) => {
@@ -84,9 +72,6 @@ document.addEventListener('DOMContentLoaded', () => {
         actionMenu.classList.remove('active');
     });
 
-    // =========================
-    // 4. ІМПОРТ
-    // =========================
     btnImport.addEventListener('click', () => {
         const url = prompt('Google Doc URL:');
         if (!url) return;
@@ -103,9 +88,6 @@ document.addEventListener('DOMContentLoaded', () => {
         actionMenu.classList.remove('active');
     });
 
-    // =========================
-    // 5. ОЧИЩЕННЯ ПРЕВʼЮ
-    // =========================
     clearPreviewBtn.addEventListener('click', () => {
         pendingAttachment = null;
         hiddenImageInput.value = '';
@@ -113,9 +95,6 @@ document.addEventListener('DOMContentLoaded', () => {
         previewArea.classList.add('hidden');
     });
 
-    // =========================
-    // 6. LOCALSTORAGE
-    // =========================
     function saveNotes() {
         const notes = [...notesStream.querySelectorAll('.note-container')]
             .map(n => n.outerHTML);
@@ -145,9 +124,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     restoreNotes();
 
-    // =========================
-    // 7. СТВОРЕННЯ НОТАТКИ
-    // =========================
     function createNote() {
         const text = inputField.value.trim();
         if (!text && !pendingAttachment) return;
@@ -222,9 +198,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.key === 'Enter') createNote();
     });
 
-    // =========================
-    // 9. ВСТАВКА ТАБЛИЦІ 10x10 CTRL+/
-    // =========================
     function lockTable(container) {
         container.querySelectorAll('td').forEach(td => {
             td.contentEditable = 'false';
@@ -273,4 +246,151 @@ document.addEventListener('DOMContentLoaded', () => {
             };
         }
     });
+
+    const copyMenu = document.getElementById('copy-menu');
+    let selectedText = '';
+    let hideTimeout; // ← ДОДАНО
+    
+    document.addEventListener('dblclick', (e) => {
+        const note = e.target.closest('.note-card');
+        if (!note) return;
+    
+        selectedText = note.innerText.replace('✕', '').trim();
+    
+        copyMenu.classList.remove('hidden');
+        copyMenu.style.left = e.pageX + 'px';
+        copyMenu.style.top = e.pageY + 'px';
+    
+        requestAnimationFrame(() => {
+            copyMenu.classList.add('show');
+        });
+    
+        // 🔥 АВТОЗНИКНЕННЯ ЧЕРЕЗ 1.5 С
+        clearTimeout(hideTimeout);
+        hideTimeout = setTimeout(() => {
+            copyMenu.classList.remove('show');
+            setTimeout(() => copyMenu.classList.add('hidden'), 200);
+        }, 1500);
+    });
+    
+    copyMenu.addEventListener('click', () => {
+        navigator.clipboard.writeText(selectedText);
+        copyMenu.classList.remove('show');
+        setTimeout(() => copyMenu.classList.add('hidden'), 200);
+    });
+// =========================
+// СИСТЕМА ПАПОК (СПЛИВАЮЧИЙ ФРЕЙМ)
+// =========================
+
+// контейнер папок
+const folderContainer = document.querySelector('.folder_div');
+
+// заголовок "Мої папки"
+const folderTitle = folderContainer.querySelector('.infolder_h3');
+
+// створюємо кнопку "+"
+const addFolderBtn = document.createElement('span');
+addFolderBtn.textContent = '+';
+addFolderBtn.style.cursor = 'pointer';
+addFolderBtn.style.marginLeft = '8px';
+addFolderBtn.style.fontSize = '20px';
+addFolderBtn.title = 'Створити папку';
+folderTitle.appendChild(addFolderBtn);
+
+// створюємо спливаючий фрейм (модальне вікно)
+const modal = document.createElement('div');
+modal.style.position = 'fixed';
+modal.style.top = '0';
+modal.style.left = '0';
+modal.style.width = '100%';
+modal.style.height = '100%';
+modal.style.backgroundColor = 'rgba(0,0,0,0.5)';
+modal.style.display = 'none';
+modal.style.justifyContent = 'center';
+modal.style.alignItems = 'center';
+modal.style.zIndex = '1000';
+
+const modalContent = document.createElement('div');
+modalContent.classList.add('glass-panel'); // додаємо клас
+modalContent.style.padding = '20px';
+modalContent.style.borderRadius = '30px'; // radius 30
+modalContent.style.boxShadow = '0 0 10px rgba(0,0,0,0.3)';
+modalContent.style.textAlign = 'center';
+modalContent.style.minWidth = '250px';
+
+
+const input = document.createElement('input');
+input.type = 'text';
+input.placeholder = 'Назва папки';
+input.style.width = '80%';
+input.style.padding = '5px';
+input.style.marginBottom = '10px';
+
+const btnCreate = document.createElement('button');
+btnCreate.textContent = 'Створити';
+btnCreate.style.marginRight = '10px';
+
+const btnCancel = document.createElement('button');
+btnCancel.textContent = 'Відмінити';
+
+modalContent.appendChild(input);
+modalContent.appendChild(document.createElement('br'));
+modalContent.appendChild(btnCreate);
+modalContent.appendChild(btnCancel);
+modal.appendChild(modalContent);
+document.body.appendChild(modal);
+
+// функція створення папки
+function createFolder(name) {
+    const div = document.createElement('div');
+    div.className = 'glass-panel folder';
+
+    const p = document.createElement('p');
+    p.textContent = name;
+
+    div.appendChild(p);
+    folderContainer.appendChild(div);
+}
+
+// завантаження папок
+function loadFolders() {
+    const saved = JSON.parse(localStorage.getItem('folders') || '[]');
+    saved.forEach(name => createFolder(name));
+}
+
+// відкриття модалки
+addFolderBtn.addEventListener('click', () => {
+    input.value = '';
+    modal.style.display = 'flex';
+    input.focus();
 });
+
+// створення папки через модалку
+btnCreate.addEventListener('click', () => {
+    const name = input.value.trim();
+    if (!name) return;
+
+    createFolder(name);
+
+    const saved = JSON.parse(localStorage.getItem('folders') || '[]');
+    saved.push(name);
+    localStorage.setItem('folders', JSON.stringify(saved));
+
+    modal.style.display = 'none';
+});
+
+// закриття модалки
+btnCancel.addEventListener('click', () => {
+    modal.style.display = 'none';
+});
+
+// закриття при кліку поза контентом
+modal.addEventListener('click', e => {
+    if (e.target === modal) modal.style.display = 'none';
+});
+
+// старт
+loadFolders();
+
+});
+
