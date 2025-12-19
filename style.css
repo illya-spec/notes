@@ -380,7 +380,7 @@ margin-bottom: 30px;
   height: 50px;
   box-sizing: border-box;
   padding: 8px 12px 10px;
-  margin-top: 12px; border-radius: 99em;
+  margin-top: 12px; border-radius: 20px;
   transition: transform 0.35s; 
 }
 .note-container:hover{
@@ -457,4 +457,118 @@ margin-bottom: 30px;
 
 .hidden {
     display: none;
+}
+.folder-btn {
+    position: absolute;
+    top: 6px;
+    right: 36px;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    background: none;
+    border: none;
+    cursor: pointer;
+    opacity: 0.8;
+}
+
+.folder-btn svg {
+    width: 100%;
+    height: 100%;
+    fill: #fff;
+    pointer-events: none;
+}
+
+.folder-btn:hover {
+    opacity: 1;
+}
+/* --- ВИПРАВЛЕННЯ ДЛЯ ПАПОК ТА МІНІ-НОТАТОК --- */
+
+/* Дозволяємо папці розширюватися вниз */
+.folder {
+    height: auto !important;          /* Скасовуємо фіксовані 50px */
+    min-height: 50px;                 /* Мінімальна висота залишається */
+    flex-direction: column !important; /* Ставимо заголовок і нотатки один під одним */
+    justify-content: flex-start !important;
+    align-items: flex-start !important;
+    padding: 10px !important;
+    gap: 8px;                         /* Відстань між назвою та нотатками */
+    overflow: visible !important;
+}
+
+/* Назва папки тепер завжди зверху */
+.folder p {
+    margin: 0 !important;
+    width: 100%;
+    pointer-events: none;
+}
+
+/* Міні-картка нотатки всередині папки */
+.mini-note-card {
+    width: 100% !important;           /* Займає всю ширину папки */
+    height: auto !important;          /* Не даємо їй бути сплющеною */
+    min-height: 35px;
+    padding: 10px !important;
+    padding-bottom: 10px !important;  /* Твій запит: педдінг-бот 10пкс */
+    margin: 0 !important;
+    font-size: 13px;
+    line-height: 1.3;
+    background: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: 25px !important;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-sizing: border-box;
+    flex-shrink: 0;                  /* ЗАБОРОНЯЄМО стискання */
+}
+
+/* Хрестик для видалення нотатки з папки */
+.remove-mini-btn {
+    background: none;
+    border: none;
+    color: rgba(255, 77, 77, 0.6);
+    cursor: pointer;
+    font-size: 14px;
+    padding: 0 5px;
+    transition: 0.2s;
+    line-height: 1;
+}
+
+.remove-mini-btn:hover {
+    color: #ff4d4d;
+    transform: scale(1.2);
+}
+
+/* Випливаючий фрейм (модалка) */
+#noteSelectionModal .glass-panel {
+    border-radius: 15px !important;   /* Твій запит: бордер радіус 15пкс */
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+}
+/* --- ВІДСТУПИ ДЛЯ МІНІ-НОТАТОК --- */
+
+.mini-note-card {
+    /* Додаємо відчутний відступ зверху між картками */
+    margin-top: 1px !important; 
+    
+    /* Твій запит: педдінг знизу 10пкс */
+    padding-bottom: 10px !important; 
+    
+    /* Гарантуємо, що картка не стискається */
+    flex-shrink: 0 !important;
+    width: 100% !important;
+    box-sizing: border-box;
+}
+
+/* Додатково: робимо відступ після назви папки, щоб перша нотатка не прилипала */
+.folder p {
+    margin-bottom: 8px !important;
+}
+
+/* Щоб папка виглядала охайно, коли в ній багато нотаток */
+.folder {
+    padding-top: 12px !important;
+    padding-bottom: 12px !important;
+    display: flex;
+    flex-direction: column;
 }
