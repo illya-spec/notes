@@ -6,90 +6,68 @@
     <title>Notes</title>
     <link rel="stylesheet" href="style.css">
 </head>
+<body>
+<canvas id="animatedBackground"></canvas>
 
-    <div class="background-blobs">
-        <div class="blob blob-1"></div>
-        <div class="blob blob-2"></div>
-        <div class="blob blob-3"></div>
-    </div>
-
-    <div class="main_menu glass-panel">
-        <div class="search">
-            <input placeholder="Search...">
+<div class="app-layout">
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <h1>Нотатки</h1>
+            <button class="btn-about">Про нас</button>
         </div>
-        <div class="folder_div glass-panel">
-            <h3 class="infolder_h3">Мої папки</h3>
-            <div class="glass-panel folder"><p>Особисте</p></div>
-            <div class="glass-panel folder"><p>Робота</p></div>
-            <div class="glass-panel folder"><p>Ідеї</p></div>
+        <div class="search-row static-search">
+            <div class="search-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></div>
+            <input type="text" placeholder="Пошук..." id="globalSearchInput">
         </div>
-    </div>
-
-    <div class="write_menu" id="notesStream">
-        <div class="empty-placeholder">
-            Нотатки тут
-        </div>
-    </div>
-
-    <div class="bottom-input-wrapper">
-    
-        <div class="glass-actions-menu glass-panel">
-            <button class="action-btn" id="btnImage" title="Додати фото">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                    <circle cx="8.5" cy="8.5" r="1.5"></circle>
-                    <polyline points="21 15 16 10 5 21"></polyline>
-                </svg>
-            </button>
-            <button class="action-btn" id="btnFile" title="Додати файл">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="12" y1="5" x2="12" y2="19"></line>
-                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                </svg>
-            </button>
-            <button class="action-btn" id="btnImport" title="Google Docs">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                    <line x1="3" y1="9" x2="21" y2="9"></line>
-                    <line x1="9" y1="21" x2="9" y2="9"></line>
-                </svg>
-            </button>
-        </div>
-
-        <div id="preview-area" class="preview-area glass-panel hidden">
-            <div class="preview-content">
-                <img id="preview-img" src="" alt="">
-                <span id="preview-text"></span>
+        <div id="groupsContainer"></div>
+        <div id="mainDropZone" class="outer-list"></div>
+        <div class="sidebar-footer">
+            <div class="footer-icons">
+                <button class="icon-btn" id="createGroupBtn"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#222" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><path d="M10 17h-3a2 2 0 0 1-2-2v-3"></path></svg></button>
+                <button class="icon-btn" id="themeToggleBtn"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg></button>
             </div>
-            <button id="clear-preview">✕</button>
+            <button class="big-pill-btn" id="createFolderBtn">+</button>
         </div>
-    
-        <div class="main-input-capsule glass-panel">
-            <button class="clip-btn">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
-                </svg>
-            </button>
-    
-            <input type="text" id="mainInput" placeholder="Напишіть нотатку..." autocomplete="off">
-    
-            <button class="return-btn">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polyline points="9 10 4 15 9 20"></polyline>
-                    <path d="M20 4v7a4 4 0 0 1-4 4H4"></path>
-                </svg>
-            </button>
+    </aside>
+
+    <main class="main-content">
+        <div class="local-search-bar" id="localSearchBar">
+            <input type="text" id="localSearchInput" placeholder="Знайти в переписке...">
+            <button id="closeLocalSearch">✕</button>
         </div>
-        
-        <input type="file" id="hiddenFileInput" hidden>
-        <input type="file" id="hiddenImageInput" accept="image/*" hidden>
-    
+        <div class="chat-feed" id="chatFeed"></div>
+        <div class="input-container">
+            <div class="attach-popup" id="attachPopup">
+                <button id="btnImg"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg></button>
+                <button id="btnPlus"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></button>
+                <button id="btnTable"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M3 9h18"/><path d="M9 21V9"/></svg></button>
+                <button id="btnSearch"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></button>
+            </div>
+            <div class="input-bar">
+                <button class="clip-btn" id="clipBtn"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg></button>
+                <input type="text" id="msgInput" placeholder="Введіть нотатку..." autocomplete="off">
+                <button class="send-btn" id="sendBtn"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2"><path d="M9 14l-4-4 4-4"/><path d="M5 10h11a4 4 0 1 1 0 8h-1"/></svg></button>
+            </div>
+        </div>
+    </main>
+
+    <div id="colorModal" class="modal-overlay">
+        <div class="modal-card">
+            <h3>Колір виділених нотаток у групі</h3>
+            <div class="color-grid">
+                <div class="color-option" data-color="blue" style="background: linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%);"></div>
+                <div class="color-option" data-color="pink" style="background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);"></div>
+                <div class="color-option" data-color="green" style="background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);"></div>
+                <div class="color-option" data-color="orange" style="background: linear-gradient(135deg, #fccb90 0%, #d57eeb 100%);"></div>
+                <div class="color-option" data-color="red" style="background: linear-gradient(135deg, #ff9999 0%, #ffcaca 100%);"></div>
+            </div>
+            <button id="closeModal">Скасувати</button>
+        </div>
     </div>
-    <div id="copy-menu" class="glass-panel copy-menu hidden">
-    <img src="Copy.png" class="copy-icon" alt="copy">
-    <span>Копіювати</span>
 </div>
 
-    <script src="script.js"></script>
+<input type="file" id="fileInputImg" accept="image/*" hidden>
+<input type="file" id="fileInputAny" hidden>
+<script src="script.js"></script>
 </body>
 </html>

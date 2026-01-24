@@ -1,648 +1,697 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const inputField = document.getElementById('mainInput');
-    const sendBtn = document.querySelector('.return-btn');
-    const clipBtn = document.querySelector('.clip-btn');
-    const actionMenu = document.querySelector('.glass-actions-menu');
-    const notesStream = document.getElementById('notesStream');
+    
+    // ПРЕСЕТИ КОЛЬОРІВ (Liquid Glass)
+    const colorPresets = {
+        blue: { 
+            bg: 'rgba(64, 201, 255, 0.3)', 
+            active: 'linear-gradient(90deg, #40c9ff, #00baee)',
+            item: 'rgba(64, 201, 255, 0.2)'
+        },
+        pink: { 
+            bg: 'rgba(255, 117, 140, 0.3)', 
+            active: 'linear-gradient(90deg, #ff758c, #ff7eb3)',
+            item: 'rgba(255, 117, 140, 0.2)'
+        },
+        green: { 
+            bg: 'rgba(94, 231, 128, 0.3)', 
+            active: 'linear-gradient(90deg, #42e695, #3bb2b8)',
+            item: 'rgba(94, 231, 128, 0.2)'
+        },
+        orange: { 
+            bg: 'rgba(255, 185, 99, 0.3)', 
+            active: 'linear-gradient(90deg, #fccb90, #d57eeb)',
+            item: 'rgba(255, 185, 99, 0.2)'
+        },
+        red: { 
+            bg: 'rgba(255, 99, 99, 0.3)', 
+            active: 'linear-gradient(90deg, #ff512f, #dd2476)',
+            item: 'rgba(255, 99, 99, 0.2)'
+        }
+    };
 
-    const btnImage = document.getElementById('btnImage');
-    const btnFile = document.getElementById('btnFile');
-    const btnImport = document.getElementById('btnImport');
+    // --- ДОДАВАННЯ HTML ДЛЯ МОДАЛКИ "ПРО НАС" (Щоб не лізти в index.html) ---
+    const aboutModalHTML = `
+    <div id="aboutModal" class="modal-overlay">
+        <div class="modal-card">
+            <h1>Про додаток</h1>
+            <p style="margin: 15px 0; line-height: 1.5; color: var(--text-main);">
+                Це ваш персональний простір для думок, файлів та ідей.<br>
+                Створено з любов'ю до мінімалізму та функціональності.<br><br>
+                Версія: 1.4 Bug fix & LG
+            </p>
+            <button id="closeAboutModal" style="background: #40c9ff; color: #fff; border: none; padding: 8px 20px; border-radius: 15px; cursor: pointer;">Зрозуміло</button>
+        </div>
+    </div>`;
+    document.body.insertAdjacentHTML('beforeend', aboutModalHTML);
 
-    const hiddenImageInput = document.getElementById('hiddenImageInput');
-    const hiddenFileInput = document.getElementById('hiddenFileInput');
+    // --- ЗАВАНТАЖЕННЯ ДАНИХ З LOCALSTORAGE ---
+    const savedData = JSON.parse(localStorage.getItem('notesAppData')) || {};
 
-    const previewArea = document.getElementById('preview-area');
-    const previewImg = document.getElementById('preview-img');
-    const previewText = document.getElementById('preview-text');
-    const clearPreviewBtn = document.getElementById('clear-preview');
-
-    let pendingAttachment = null;
-
-    clipBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        actionMenu.classList.toggle('active');
-    });
-
-    document.addEventListener('click', (e) => {
-        if (!clipBtn.contains(e.target) && !actionMenu.contains(e.target)) {
-            actionMenu.classList.remove('active');
+    let groups = savedData.groups || [];
+    let folders = savedData.folders || [{ id: 1, name: 'Моя перша нотатка', groupId: null, isFavorite: false }];
+    let messages = savedData.messages || []; 
+    
+    // Додаємо ID для старих повідомлень без ID
+    messages.forEach((msg, idx) => {
+        if (!msg.id) {
+            msg.id = 'msg_legacy_' + idx + '_' + Date.now();
         }
     });
-
-    btnImage.addEventListener('click', () => hiddenImageInput.click());
-
-    hiddenImageInput.addEventListener('change', (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-            pendingAttachment = {
-                type: 'image',
-                data: ev.target.result,
-                name: file.name
-            };
-            previewImg.src = ev.target.result;
-            previewImg.style.display = 'block';
-            previewText.textContent = file.name;
-            previewArea.classList.remove('hidden');
-        };
-        reader.readAsDataURL(file);
-
-        actionMenu.classList.remove('active');
-    });
-
-    btnFile.addEventListener('click', () => hiddenFileInput.click());
-
-    hiddenFileInput.addEventListener('change', (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        pendingAttachment = {
-            type: 'file',
-            url: URL.createObjectURL(file),
-            name: file.name
-        };
-
-        previewImg.style.display = 'none';
-        previewText.innerHTML = `📎 ${file.name}`;
-        previewArea.classList.remove('hidden');
-
-        actionMenu.classList.remove('active');
-    });
-
-    btnImport.addEventListener('click', () => {
-        const url = prompt('Google Doc URL:');
-        if (!url) return;
-
-        pendingAttachment = {
-            type: 'gdoc',
-            url
-        };
-
-        previewImg.style.display = 'none';
-        previewText.innerHTML = `📄 Google Doc`;
-        previewArea.classList.remove('hidden');
-
-        actionMenu.classList.remove('active');
-    });
-
-    clearPreviewBtn.addEventListener('click', () => {
-        pendingAttachment = null;
-        hiddenImageInput.value = '';
-        hiddenFileInput.value = '';
-        previewArea.classList.add('hidden');
-    });
-
-    function saveNotes() {
-        const notes = [...notesStream.querySelectorAll('.note-container')]
-            .map(n => n.outerHTML);
-        localStorage.setItem('savedNotes', JSON.stringify(notes));
+    let activeFolderId = savedData.activeFolderId || (folders.length > 0 ? folders[0].id : null);
+    
+    // Відновлення темної теми
+    if (savedData.darkMode) {
+        document.body.classList.add('dark-mode');
     }
 
-    function restoreNotes() {
-        const saved = JSON.parse(localStorage.getItem('savedNotes') || '[]');
-        notesStream.innerHTML = '';
+    let draggedFolderId = null;
+    let searchQuery = '';      
+    let chatSearchQuery = '';  
 
-        saved.forEach(html => {
-            notesStream.insertAdjacentHTML('beforeend', html);
-        });
+    // ЕЛЕМЕНТИ
+    const groupsContainer = document.getElementById('groupsContainer');
+    const mainDropZone = document.getElementById('mainDropZone');
+    const chatEl = document.getElementById('chatFeed');
+    const input = document.getElementById('msgInput');
+    const colorModal = document.getElementById('colorModal');
+    const themeBtn = document.getElementById('themeToggleBtn');
+    
+    const globalSearchInput = document.getElementById('globalSearchInput');
+    const localSearchBar = document.getElementById('localSearchBar');
+    const localSearchInput = document.getElementById('localSearchInput');
+    const btnSearch = document.getElementById('btnSearch');
+    const closeLocalSearch = document.getElementById('closeLocalSearch');
 
-        notesStream.querySelectorAll('.delete-btn').forEach(btn => {
-            btn.onclick = () => {
-                const parent = btn.closest('.note-container');
-                parent.style.opacity = '0';
-                parent.style.transform = 'scale(0.9)';
-                setTimeout(() => {
-                    parent.remove();
-                    saveNotes();
-                }, 300);
-            };
-        });
+    const attachPopup = document.getElementById('attachPopup');
+    const clipBtn = document.getElementById('clipBtn');
+    const fileInputImg = document.getElementById('fileInputImg');
+    const fileInputAny = document.getElementById('fileInputAny');
+
+    // Елементи для About Us
+    const btnAbout = document.querySelector('.btn-about');
+    const aboutModal = document.getElementById('aboutModal');
+    const closeAboutModal = document.getElementById('closeAboutModal');
+
+    // --- ЛОГІКА ABOUT US ---
+    if (btnAbout) {
+        btnAbout.onclick = () => aboutModal.classList.add('active');
+    }
+    if (closeAboutModal) {
+        closeAboutModal.onclick = () => aboutModal.classList.remove('active');
     }
 
-    restoreNotes();
+    // --- ФУНКЦІЯ ЗБЕРЕЖЕННЯ ДАНИХ ---
+    function saveData() {
+        try {
+            const dataToSave = {
+                groups,
+                folders,
+                messages,
+                activeFolderId,
+                darkMode: document.body.classList.contains('dark-mode')
+            };
+            localStorage.setItem('notesAppData', JSON.stringify(dataToSave));
+        } catch (e) {
+            console.error('LocalStorage error:', e);
+        }
+    }
+    
+    // --- ЛОГІКА ПОШУКУ ---
+    function isMatch(folder) {
+        if (!searchQuery) return true;
+        const q = searchQuery.toLowerCase();
+        if (folder.name.toLowerCase().includes(q)) return true;
+        return messages.some(m => m.folderId === folder.id && m.type === 'text' && m.text.toLowerCase().includes(q));
+    }
 
-    function createNote() {
-        const text = inputField.value.trim();
-        if (!text && !pendingAttachment) return;
+    globalSearchInput.oninput = (e) => { 
+        searchQuery = e.target.value.toLowerCase(); 
+        renderAll(); 
+    };
 
-        const now = new Date();
-        const dateStr = now.toLocaleDateString('uk-UA', {
-            day: 'numeric',
-            month: 'long',
-            year: 'numeric'
-        });
+    btnSearch.onclick = (e) => { 
+        e.stopPropagation(); 
+        attachPopup.classList.remove('show'); 
+        localSearchBar.classList.add('active'); 
+        localSearchInput.focus(); 
+    };
 
-        const noteDiv = document.createElement('div');
-        noteDiv.className = 'note-container';
+    closeLocalSearch.onclick = () => { 
+        localSearchBar.classList.remove('active'); 
+        chatSearchQuery = ''; 
+        localSearchInput.value = ''; 
+        renderChat(); 
+    };
 
-        let textHTML = text ? `<div>${text}</div>` : '';
-        let attachmentHTML = '';
+    localSearchInput.oninput = (e) => { 
+        chatSearchQuery = e.target.value.trim(); 
+        renderChat(); 
+    };
+    
+    themeBtn.onclick = () => {
+        document.body.classList.toggle('dark-mode');
+        saveData(); 
+    };
 
-        if (pendingAttachment) {
-            if (pendingAttachment.type === 'image') {
-                attachmentHTML = `
-                    <div class="media-container">
-                        <a href="${pendingAttachment.data}" download="${pendingAttachment.name}">
-                            <img src="${pendingAttachment.data}" class="note-image">
-                        </a>
-                    </div>`;
-            } else if (pendingAttachment.type === 'file') {
-                attachmentHTML = `
-                    <a href="${pendingAttachment.url}" download="${pendingAttachment.name}" class="note-file">
-                        📎 ${pendingAttachment.name}
-                    </a>`;
-            } else if (pendingAttachment.type === 'gdoc') {
-                attachmentHTML = `
-                    <a href="${pendingAttachment.url}" target="_blank" class="note-file" style="color:#4dabf7;">
-                        📄 Google Doc
-                    </a>`;
+    // --- ВІЗУАЛІЗАЦІЯ (RENDER) ---
+    function renderAll() { 
+        renderGroups(); 
+        renderMainList(); 
+        renderChat(); 
+        updateInputUI();
+    }
+
+    function updateInputUI() {
+        const inputBar = document.querySelector('.input-bar');
+        const activeFolder = folders.find(f => f.id === activeFolderId);
+        
+        if (activeFolder && activeFolder.groupId) {
+            const group = groups.find(g => g.id === activeFolder.groupId);
+            if (group && colorPresets[group.color]) {
+                inputBar.style.background = colorPresets[group.color].active;
+                inputBar.classList.add('colored');
+                return; 
             }
         }
+        inputBar.style.background = ''; 
+        inputBar.classList.remove('colored');
+    }
+    
+    function renderGroups() {
+        groupsContainer.innerHTML = '';
+        groups.forEach(group => {
+            const groupEl = document.createElement('div');
+            groupEl.className = 'glass-group';
+            groupEl.dataset.groupId = group.id;
+            
+            if (group.color && colorPresets[group.color]) {
+                groupEl.style.setProperty('--group-color', colorPresets[group.color].bg);
+                groupEl.style.setProperty('--active-color', colorPresets[group.color].active);
+            }
 
-        noteDiv.innerHTML = `
-            <div class="note-date">${dateStr}</div>
-            <div class="note-card">
-                <button class="delete-btn">✕</button>
-                ${textHTML}
-                ${attachmentHTML}
+            // Додаємо кнопку розгрупування
+            const ungroupBtn = document.createElement('button');
+            ungroupBtn.className = 'ungroup-btn';
+            ungroupBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg>';
+            ungroupBtn.onclick = () => ungroup(group.id);
+            groupEl.appendChild(ungroupBtn);
+
+            // ДОДАЄМО НАЗВУ ГРУПИ
+            if (group.name) {
+                const groupTitle = document.createElement('h3');
+                groupTitle.innerText = group.name;
+                // Стилі для заголовка групи
+                groupTitle.style.margin = '0 0 10px 5px';
+                groupTitle.style.fontSize = '14px';
+                groupTitle.style.fontWeight = '600';
+                groupTitle.style.opacity = '0.7';
+                groupTitle.style.color = 'inherit';
+                groupEl.appendChild(groupTitle);
+            }
+
+            const innerList = document.createElement('div');
+            innerList.className = 'inner-list';
+            folders.filter(f => f.groupId === group.id && isMatch(f)).forEach(f => innerList.appendChild(createFolderElement(f)));
+            groupEl.appendChild(innerList);
+            
+            setupDropZone(groupEl, group.id);
+            groupsContainer.appendChild(groupEl);
+        });
+    }
+
+    function renderMainList() {
+        mainDropZone.innerHTML = '';
+        folders.filter(f => f.groupId === null && isMatch(f)).forEach(f => mainDropZone.appendChild(createFolderElement(f)));
+        setupDropZone(mainDropZone, null);
+    }
+
+    function createFolderElement(folder) {
+        const el = document.createElement('div');
+        let classes = `list-item`;
+        if (folder.id === activeFolderId) classes += ' active';
+        if (folder.groupId === null && folder.id !== activeFolderId) classes += ' orphan';
+        el.className = classes;
+        el.draggable = true;
+        
+        const favClass = folder.isFavorite ? 'is-fav' : '';
+
+        el.innerHTML = `
+            <div class="item-info">${folder.name}</div>
+            <div class="item-icons">
+                 <button class="folder-btn download-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></button>
+                 <button class="folder-btn fav-btn ${favClass}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg></button>
+                 <button class="folder-btn delete-folder-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>
             </div>
         `;
 
-        if (pendingAttachment?.type === 'table') {
-            noteDiv.querySelector('.note-card').appendChild(pendingAttachment.element);
-            lockTable(pendingAttachment.element);
-        }
-
-        noteDiv.querySelector('.delete-btn').onclick = () => {
-            noteDiv.style.opacity = '0';
-            noteDiv.style.transform = 'scale(0.9)';
-            setTimeout(() => {
-                noteDiv.remove();
-                saveNotes();
-            }, 300);
+        el.onclick = (e) => { 
+            if (e.target.closest('.folder-btn') || e.target.closest('.item-icons')) {
+                return;
+            }
+            activeFolderId = folder.id; 
+            saveData();
+            renderAll(); 
         };
 
-        notesStream.appendChild(noteDiv);
-        notesStream.scrollTo({ top: notesStream.scrollHeight, behavior: 'smooth' });
-
-        inputField.value = '';
-        clearPreviewBtn.click();
-        saveNotes();
-    }
-
-    sendBtn.addEventListener('click', createNote);
-    inputField.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') createNote();
-    });
-
-    function lockTable(container) {
-        container.querySelectorAll('td').forEach(td => {
-            td.contentEditable = 'false';
-            td.style.cursor = 'default';
-        });
-    }
-
-    inputField.addEventListener('keydown', (e) => {
-        if (e.ctrlKey && e.key === '/') {
-            e.preventDefault();
-
-            const tableContainer = document.createElement('div');
-            tableContainer.style.marginTop = '10px';
-            tableContainer.style.padding = '6px';
-            tableContainer.style.display = 'inline-block';
-            tableContainer.style.color = '#FFF';
-
-            const table = document.createElement('table');
-            table.style.borderCollapse = 'separate';
-            table.style.borderSpacing = '0';
-            table.style.overflow = 'hidden';
-
-            for (let i = 0; i < 10; i++) {
-                const tr = document.createElement('tr');
-                for (let j = 0; j < 10; j++) {
-                    const td = document.createElement('td');
-                    td.contentEditable = 'true';
-                    td.style.width = '26px';
-                    td.style.height = '26px';
-                    td.style.textAlign = 'center';
-                    td.style.color = '#FFF';
-                    td.style.border = '0.3px solid rgba(255,255,255,0.3)';
-                    tr.appendChild(td);
-                }
-                table.appendChild(tr);
-            }
-
-            tableContainer.appendChild(table);
-            previewArea.innerHTML = '';
-            previewArea.appendChild(tableContainer);
-            previewArea.classList.remove('hidden');
-
-            pendingAttachment = {
-                type: 'table',
-                element: tableContainer
+        const downloadBtn = el.querySelector('.download-btn');
+        if (downloadBtn) {
+            downloadBtn.onclick = (e) => { 
+                e.stopPropagation(); 
+                e.preventDefault();
+                downloadNote(folder); 
             };
         }
-    });
 
-    const copyMenu = document.getElementById('copy-menu');
-    let selectedText = '';
-    let hideTimeout; // ← ДОДАНО
-    
-    document.addEventListener('dblclick', (e) => {
-        const note = e.target.closest('.note-card');
-        if (!note) return;
-    
-        selectedText = note.innerText.replace('✕', '').trim();
-    
-        copyMenu.classList.remove('hidden');
-        copyMenu.style.left = e.pageX + 'px';
-        copyMenu.style.top = e.pageY + 'px';
-    
-        requestAnimationFrame(() => {
-            copyMenu.classList.add('show');
+        const favBtn = el.querySelector('.fav-btn');
+        if (favBtn) {
+            favBtn.onclick = (e) => { 
+                e.stopPropagation(); 
+                e.preventDefault();
+                folder.isFavorite = !folder.isFavorite; 
+                saveData();
+                renderAll(); 
+            };
+        }
+
+        const deleteBtn = el.querySelector('.delete-folder-btn');
+        if (deleteBtn) {
+            deleteBtn.onclick = (e) => { 
+                e.stopPropagation(); 
+                e.preventDefault();
+                if (confirm('Ви впевнені, що хочете видалити цю нотатку?')) {
+                    messages = messages.filter(m => m.folderId !== folder.id);
+                    folders = folders.filter(f => f.id !== folder.id);
+                    if (activeFolderId === folder.id) {
+                        activeFolderId = folders.length > 0 ? folders[0].id : null;
+                    }
+                    saveData();
+                    renderAll(); 
+                }
+            };
+        }
+
+        el.addEventListener('dragstart', (e) => { 
+            draggedFolderId = folder.id; 
+            el.style.opacity = '0.5'; 
         });
-    
-        // 🔥 АВТОЗНИКНЕННЯ ЧЕРЕЗ 1.5 С
-        clearTimeout(hideTimeout);
-        hideTimeout = setTimeout(() => {
-            copyMenu.classList.remove('show');
-            setTimeout(() => copyMenu.classList.add('hidden'), 200);
-        }, 1500);
-    });
-    
-    copyMenu.addEventListener('click', () => {
-        navigator.clipboard.writeText(selectedText);
-        copyMenu.classList.remove('show');
-        setTimeout(() => copyMenu.classList.add('hidden'), 200);
-    });
-// =========================
-// СИСТЕМА ПАПОК (СПЛИВАЮЧИЙ ФРЕЙМ)
-// =========================
 
-// контейнер папок
-const folderContainer = document.querySelector('.folder_div');
+        el.addEventListener('dragend', () => { 
+            draggedFolderId = null; 
+            el.style.opacity = '1'; 
+            document.querySelectorAll('.drag-over').forEach(e => e.classList.remove('drag-over')); 
+        });
 
-// заголовок "Мої папки"
-const folderTitle = folderContainer.querySelector('.infolder_h3');
+        return el;
+    }
 
-// створюємо кнопку "+"
-const addFolderBtn = document.createElement('span');
-addFolderBtn.textContent = '+';
-addFolderBtn.style.cursor = 'pointer';
-addFolderBtn.style.marginLeft = '8px';
-addFolderBtn.style.fontSize = '20px';
-addFolderBtn.title = 'Створити папку';
-folderTitle.appendChild(addFolderBtn);
+    function renderChat() {
+        chatEl.innerHTML = '';
+        const msgs = messages.filter(m => m.folderId === activeFolderId);
+        const termToHighlight = chatSearchQuery.trim() || searchQuery.trim();
 
-// створюємо спливаючий фрейм (модальне вікно)
-const modal = document.createElement('div');
-modal.style.position = 'fixed';
-modal.style.top = '0';
-modal.style.left = '0';
-modal.style.width = '100%';
-modal.style.height = '100%';
-modal.style.backgroundColor = 'rgba(0,0,0,0.5)';
-modal.style.display = 'none';
-modal.style.justifyContent = 'center';
-modal.style.alignItems = 'center';
-modal.style.zIndex = '1000';
+        if (msgs.length === 0) {
+            chatEl.innerHTML = '<div style="text-align:center; color:#888; margin-top:50px;">Нотаток немає</div>';
+        } else {
+            msgs.forEach((m) => {
+                const block = document.createElement('div');
+                block.className = 'message-block';
+                block.dataset.id = m.id;
 
-const modalContent = document.createElement('div');
-modalContent.classList.add('glass-panel'); // додаємо клас
-modalContent.style.padding = '20px';
-modalContent.style.borderRadius = '30px'; // radius 30
-modalContent.style.boxShadow = '0 0 10px rgba(0,0,0,0.3)';
-modalContent.style.textAlign = 'center';
-modalContent.style.minWidth = '250px';
+                const header = document.createElement('div');
+                header.className = 'message-header';
+                
+                const actionsDiv = document.createElement('div');
+                actionsDiv.className = 'header-actions';
 
+                // Копіювання
+                const btnCopy = document.createElement('button');
+                btnCopy.className = 'header-btn';
+                btnCopy.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>';
+                btnCopy.onclick = () => {
+                    let txt = '';
+                    if (m.type === 'text') txt = m.text;
+                    else if (m.type === 'file') txt = `Файл: ${m.content.name}`;
+                    else txt = '[Контент]';
+                    navigator.clipboard.writeText(txt);
+                };
 
-const input = document.createElement('input');
-input.type = 'text';
-input.placeholder = 'Назва папки';
-input.style.width = '80%';
-input.style.padding = '5px';
-input.style.marginBottom = '10px';
+                // Видалення
+                const btnDelete = document.createElement('button');
+                btnDelete.className = 'header-btn delete';
+                btnDelete.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>';
+                btnDelete.onclick = (e) => {
+                    e.stopPropagation();
+                    messages = messages.filter(msg => msg.id !== m.id);
+                    saveData();
+                    renderChat();
+                };
 
-const btnCreate = document.createElement('button');
-btnCreate.textContent = 'Створити';
-btnCreate.style.marginRight = '10px';
+                actionsDiv.appendChild(btnCopy);
+                actionsDiv.appendChild(btnDelete);
 
-const btnCancel = document.createElement('button');
-btnCancel.textContent = 'Відмінити';
+                const dateSpan = document.createElement('span');
+                dateSpan.innerText = m.dateStr;
 
-modalContent.appendChild(input);
-modalContent.appendChild(document.createElement('br'));
-modalContent.appendChild(btnCreate);
-modalContent.appendChild(btnCancel);
-modal.appendChild(modalContent);
-document.body.appendChild(modal);
+                header.appendChild(actionsDiv);
+                header.appendChild(dateSpan);
 
-// функція створення папки
-function createFolder(name) {
-    const div = document.createElement('div');
-    div.className = 'glass-panel folder';
+                const bubble = document.createElement('div');
+                bubble.className = 'msg-bubble';
+                let contentHtml = '';
+                
+                // --- РЕНДЕРИНГ РІЗНИХ ТИПІВ ---
+                if (m.type === 'text') {
+                    let txt = m.text;
+                    if (termToHighlight) { 
+                        try {
+                            const regex = new RegExp(`(${termToHighlight.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi'); 
+                            txt = txt.replace(regex, '<span class="found-text" style="background:rgba(255,255,0,0.3); padding:0 2px; border-radius:3px;">$1</span>'); 
+                        } catch(e) {}
+                    }
+                    contentHtml = txt;
+                } else if (m.type === 'image') {
+                    contentHtml = `<img src="${m.content}" class="msg-img">`;
+                } else if (m.type === 'table') {
+                    const tableData = m.content || `<table style="width:100%; border-collapse:collapse;"><tr><td style="border:1px solid #ccc; padding:5px;">...</td><td style="border:1px solid #ccc; padding:5px;">...</td></tr></table>`;
+                    contentHtml = `<div class="table-wrapper">${tableData}</div>`;
+                } else if (m.type === 'file') {
+                    const fileSize = (m.content.size / 1024).toFixed(1) + ' KB';
+                    contentHtml = `
+                        <div style="display:flex; align-items:center; gap:10px; background:rgba(0,0,0,0.05); padding:10px; border-radius:10px;">
+                            <div style="font-size:24px;">📄</div>
+                            <div style="flex:1; overflow:hidden;">
+                                <div style="font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${m.content.name}</div>
+                                <div style="font-size:11px; opacity:0.6;">${fileSize}</div>
+                            </div>
+                            <a href="${m.content.data}" download="${m.content.name}" style="text-decoration:none; background:#40c9ff; color:white; padding:5px 10px; border-radius:15px; font-size:12px;">Завантажити</a>
+                        </div>
+                    `;
+                }
+                
+                bubble.innerHTML = contentHtml + `<span class="msg-time">${m.timeStr || ''}</span>`;
 
-    const p = document.createElement('p');
-    p.textContent = name;
+                block.appendChild(header);
+                block.appendChild(bubble);
+                chatEl.appendChild(block);
+            });
+        }
+        chatEl.scrollTop = chatEl.scrollHeight;
+    }
 
-    div.appendChild(p);
-    folderContainer.appendChild(div);
-}
-
-// завантаження папок
-function loadFolders() {
-    const saved = JSON.parse(localStorage.getItem('folders') || '[]');
-    saved.forEach(name => createFolder(name));
-}
-
-// відкриття модалки
-addFolderBtn.addEventListener('click', () => {
-    input.value = '';
-    modal.style.display = 'flex';
-    input.focus();
-});
-
-// створення папки через модалку
-btnCreate.addEventListener('click', () => {
-    const name = input.value.trim();
-    if (!name) return;
-
-    createFolder(name);
-
-    const saved = JSON.parse(localStorage.getItem('folders') || '[]');
-    saved.push(name);
-    localStorage.setItem('folders', JSON.stringify(saved));
-
-    modal.style.display = 'none';
-});
-
-// закриття модалки
-btnCancel.addEventListener('click', () => {
-    modal.style.display = 'none';
-});
-
-// закриття при кліку поза контентом
-modal.addEventListener('click', e => {
-    if (e.target === modal) modal.style.display = 'none';
-});
-
-// старт
-loadFolders();
-/* =========================================================
-   ДОДАТКОВО: ВИДАЛЕННЯ ПАПОК
-   ========================================================= */
-
-// додаємо хрестик видалення для всіх папок
-function injectFolderDeleteButtons() {
-    document.querySelectorAll('.folder').forEach(folderDiv => {
-        if (folderDiv.querySelector('.delete-folder-btn')) return;
-
-        const btn = document.createElement('button');
-        btn.className = 'delete-folder-btn';
-        btn.textContent = '✕';
-        btn.style.position = 'absolute';
-        btn.style.top = '4px';
-        btn.style.right = '8px';
-        btn.style.border = 'none';
-        btn.style.background = 'transparent';
-        btn.style.color = 'white';
-        btn.style.fontSize = '16px';
-        btn.style.cursor = 'pointer';
-        btn.onclick = e => {
-            e.stopPropagation();
-            deleteFolder(folderDiv);
-        };
-
-        folderDiv.style.position = 'relative';
-        folderDiv.appendChild(btn);
-    });
-}
-
-// функція видалення папки
-function deleteFolder(folderDiv) {
-    const folderName = folderDiv.querySelector('p').innerText.trim();
-
-    // видаляємо з localStorage
-    let saved = JSON.parse(localStorage.getItem('folders') || '[]');
-    saved = saved.filter(name => name !== folderName);
-    localStorage.setItem('folders', JSON.stringify(saved));
-
-    // видаляємо нотатки з цієї папки з noteFolderMap
-    let noteFolderMap = JSON.parse(localStorage.getItem('noteFolderMap') || '{}');
-    delete noteFolderMap[folderName];
-    localStorage.setItem('noteFolderMap', JSON.stringify(noteFolderMap));
-
-    // видаляємо елемент з DOM
-    folderDiv.remove();
-}
-
-// викликаємо функцію після рендера
-injectFolderDeleteButtons();
-
-// слідкуємо за новими папками
-const folderObs = new MutationObserver(() => injectFolderDeleteButtons());
-folderObs.observe(document.querySelector('.folder_div'), { childList: true });
-/* =========================================================
-   ДОДАТКОВО: СИСТЕМА ПОШУКУ НОТАТОК
-   ========================================================= */
-
-const searchInput = document.querySelector('.search input');
-
-if (searchInput) {
-    searchInput.addEventListener('input', () => {
-        const query = searchInput.value.trim().toLowerCase();
-
-        const allNotes = document.querySelectorAll('.note-container');
-
-        allNotes.forEach(note => {
-            const text = note.innerText.replace('✕', '').trim().toLowerCase();
-            
-            if (!query) {
-                // якщо поле пусте, показуємо всі нотатки
-                note.style.display = '';
-            } else {
-                // якщо нотатка містить запит, показуємо її, інакше ховаємо
-                note.style.display = text.includes(query) ? '' : 'none';
+    // --- ЗБЕРЕЖЕННЯ ТАБЛИЦІ ПРИ ВВОДІ ---
+    chatEl.addEventListener('input', (e) => {
+        const target = e.target;
+        const block = target.closest('.message-block');
+        if (!block) return;
+        
+        const msgId = block.dataset.id;
+        const msg = messages.find(m => m.id === msgId);
+        
+        if (msg && msg.type === 'table') {
+            const wrapper = block.querySelector('.table-wrapper');
+            if (wrapper) {
+                msg.content = wrapper.innerHTML; 
+                saveData();
             }
+        }
+    });
+
+    // --- ВІДПРАВКА ПОВІДОМЛЕННЯ ---
+    function sendMsg(type='text', content=null) {
+        const t = input.value.trim();
+        if (!t && !content) return;
+        
+        if (!activeFolderId) {
+            alert('Спочатку виберіть або створіть нотатку!');
+            return;
+        }
+        
+        const now = new Date();
+        const dateStr = now.toLocaleDateString('uk-UA', { day: 'numeric', month: 'long', year: 'numeric' });
+        const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        
+        messages.push({ 
+            id: 'msg_' + Date.now() + '_' + Math.random(),
+            folderId: activeFolderId, 
+            type: type, 
+            text: t, 
+            content: content, 
+            dateStr: dateStr, 
+            timeStr: timeStr 
         });
-    });
-}
-/* =========================================================
-   СИСТЕМА ПРИВ'ЯЗКИ НОТАТОК ДО ПАПОК (ДОДАТОК)
-   ========================================================= */
+        
+        input.value = '';
+        attachPopup.classList.remove('show');
+        saveData(); 
+        renderChat();
+    }
 
-// 1. Додаємо унікальні ID нотаткам, щоб база знала, що куди додавати
-function assignNoteIds() {
-    const notes = document.querySelectorAll('.note-container');
-    notes.forEach((note, index) => {
-        if (!note.dataset.id) {
-            note.dataset.id = 'note-' + Date.now() + '-' + index;
+    document.getElementById('sendBtn').onclick = () => sendMsg('text');
+    input.addEventListener('keypress', e => { if (e.key === 'Enter') sendMsg('text'); });
+
+    // --- ОБРОБКА PASTE (Вставка Ctrl+V) ---
+    document.addEventListener('paste', (event) => {
+        const items = (event.clipboardData || event.originalEvent.clipboardData).items;
+        for (let item of items) {
+            if (item.kind === 'file' && item.type.indexOf('image/') !== -1) {
+                const blob = item.getAsFile();
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    sendMsg('image', e.target.result);
+                };
+                reader.readAsDataURL(blob);
+            }
         }
     });
-    // Оновлюємо збереження в базі, щоб ID зафіксувалися
-    const notesHTML = [...document.getElementById('notesStream').querySelectorAll('.note-container')]
-        .map(n => n.outerHTML);
-    localStorage.setItem('savedNotes', JSON.stringify(notesHTML));
-}
 
-// 2. Створюємо вікно вибору нотаток (Фрейм)
-const selectModal = document.createElement('div');
-selectModal.id = 'noteSelectionModal';
-selectModal.style.cssText = `
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0,0,0,0.6); display: none; justify-content: center;
-    align-items: center; z-index: 2000; backdrop-filter: blur(5px);
-`;
+    // --- КНОПКИ ВКЛАДЕНЬ ---
+    clipBtn.onclick = (e) => { 
+        e.stopPropagation(); 
+        attachPopup.classList.toggle('show'); 
+    };
+    document.addEventListener('click', (e) => { 
+        if (!attachPopup.contains(e.target) && e.target !== clipBtn) attachPopup.classList.remove('show'); 
+    });
 
-const selectContent = document.createElement('div');
-selectContent.classList.add('glass-panel');
-selectContent.style.cssText = `
-    padding: 25px; border-radius: 15px; width: 300px; max-height: 60vh; 
-    overflow-y: auto; text-align: center; color: white; border: 1px solid rgba(255,255,255,0.1);
-`;
-selectModal.appendChild(selectContent);
-document.body.appendChild(selectModal);
+    document.getElementById('btnImg').onclick = (e) => { e.stopPropagation(); fileInputImg.click(); };
+    fileInputImg.onchange = (e) => { 
+        const f = e.target.files[0]; 
+        if (f) { 
+            const r = new FileReader(); 
+            r.onload = (ev) => sendMsg('image', ev.target.result); 
+            r.readAsDataURL(f); 
+        } 
+        fileInputImg.value = ''; 
+    };
 
-// 3. Функція для відображення нотаток всередині папки (Зменшені картки)
-function renderSidebarNotes(folderDiv, folderName) {
-    // Видаляємо старі, щоб не дублювались при оновленні
-    folderDiv.querySelectorAll('.mini-note-card').forEach(el => el.remove());
+    document.getElementById('btnPlus').onclick = (e) => { 
+        e.stopPropagation(); 
+        fileInputAny.click(); 
+    };
 
-    const mapping = JSON.parse(localStorage.getItem('folderNoteMapping') || '{}');
-    const noteIds = mapping[folderName] || [];
+    fileInputAny.onchange = (e) => { 
+        const f = e.target.files[0]; 
+        if (f) {
+            if (f.size > 2 * 1024 * 1024) {
+                alert('Файл занадто великий для браузера (ліміт ~2-5МБ).');
+                fileInputAny.value = '';
+                return;
+            }
+            const r = new FileReader();
+            r.onload = (ev) => {
+                sendMsg('file', {
+                    name: f.name,
+                    size: f.size,
+                    type: f.type,
+                    data: ev.target.result
+                });
+            };
+            r.readAsDataURL(f); 
+        } 
+        fileInputAny.value = ''; 
+    };
 
-    noteIds.forEach(id => {
-        // Шукаємо текст оригінальної нотатки
-        const originalNote = document.querySelector(`.note-container[data-id="${id}"]`);
-        let text = "📎 Медіа/Файл";
-        if (originalNote) {
-            const noteText = originalNote.querySelector('.note-card div');
-            if (noteText) text = noteText.innerText.substring(0, 20) + '...';
+    document.getElementById('btnTable').onclick = (e) => { 
+        e.stopPropagation(); 
+        const rows = prompt("Введіть кількість рядків:", "3");
+        const cols = prompt("Введіть кількість стовпців:", "3");
+        
+        if (rows && cols) {
+            const r = parseInt(rows);
+            const c = parseInt(cols);
+            if (r > 0 && c > 0) {
+                let tableHtml = '<table style="width:100%; border-collapse:collapse; border:1px solid var(--glass-border);">';
+                for(let i = 0; i < r; i++) {
+                    tableHtml += '<tr>';
+                    for(let j = 0; j < c; j++) {
+                        tableHtml += `<td style="border:1px solid rgba(128,128,128,0.3); padding:8px; min-width:30px;" contenteditable="true">...</td>`;
+                    }
+                    tableHtml += '</tr>';
+                }
+                tableHtml += '</table>';
+                sendMsg('table', tableHtml);
+            }
         }
+    };
 
-        const miniCard = document.createElement('div');
-        miniCard.className = 'glass-panel folder mini-note-card'; // Твої класи
-        miniCard.style.cssText = `
-            font-size: 12px; margin-top: 8px; height: auto; padding: 10px;
-            padding-bottom: 10px; cursor: default; position: relative; width: 90%; margin-left: 5%;
-        `;
-        miniCard.innerHTML = `<span>${text}</span>`;
+    // --- DRAG AND DROP ---
+    function setupDropZone(el, gId) {
+        el.addEventListener('dragover', (e) => { e.preventDefault(); el.classList.add('drag-over'); });
+        el.addEventListener('dragleave', () => el.classList.remove('drag-over'));
+        el.addEventListener('drop', (e) => { 
+            e.preventDefault(); 
+            el.classList.remove('drag-over'); 
+            if (draggedFolderId) { 
+                const f = folders.find(x => x.id === draggedFolderId); 
+                if (f) {
+                    f.groupId = gId; 
+                    saveData();
+                    renderAll();
+                } 
+            } 
+        });
+    }
 
-        // Хрестик для видалення з папки
-        const removeBtn = document.createElement('button');
-        removeBtn.innerHTML = '✕';
-        removeBtn.style.cssText = `
-            position: absolute; right: 8px; top: 8px; background: none; border: none;
-            color: #ff4d4d; cursor: pointer; font-size: 10px;
-        `;
-        removeBtn.onclick = (e) => {
-            e.stopPropagation();
-            removeNoteFromFolder(folderName, id);
-        };
-
-        miniCard.appendChild(removeBtn);
-        folderDiv.appendChild(miniCard);
-    });
-}
-
-// 4. Додаємо кнопку "+" до кожної папки
-function injectPlusButtons() {
-    document.querySelectorAll('.folder').forEach(folderDiv => {
-        // Якщо це вже міні-картка або кнопка вже є — пропускаємо
-        if (folderDiv.classList.contains('mini-note-card') || folderDiv.querySelector('.add-note-to-f')) return;
-
-        const folderName = folderDiv.querySelector('p')?.innerText.trim();
-        if (!folderName) return;
-
-        const plusBtn = document.createElement('button');
-        plusBtn.className = 'add-note-to-f';
-        plusBtn.innerHTML = '+';
-        plusBtn.style.cssText = `
-            position: absolute; top: 2px; right: 35px; background: none; border: none;
-            color: #ffffffff; cursor: pointer; font-size: 20px; font-weight: bold;
-        `;
-
-        plusBtn.onclick = (e) => {
-            e.stopPropagation();
-            openNoteSelector(folderName);
-        };
-
-        folderDiv.appendChild(plusBtn);
-        // Відразу малюємо вкладені нотатки при завантаженні
-        renderSidebarNotes(folderDiv, folderName);
-    });
-}
-
-// 5. Логіка вибору нотатки
-function openNoteSelector(folderName) {
-    assignNoteIds(); // Гарантуємо, що у нотаток є ID
-    selectContent.innerHTML = `<h4 style="margin-bottom:15px;">Додати до "${folderName}"</h4>`;
+    // --- КЕРУВАННЯ ГРУПАМИ ТА ПАПКАМИ ---
+    document.getElementById('createGroupBtn').onclick = () => colorModal.classList.add('active');
+    document.getElementById('closeModal').onclick = () => colorModal.classList.remove('active');
     
-    const allNotes = document.querySelectorAll('.note-container');
-    if (allNotes.length === 0) {
-        selectContent.innerHTML += '<p style="font-size:12px; opacity:0.6;">Немає нотаток</p>';
-    }
+    // ПРИ СТВОРЕННІ ГРУПИ ЗАПИТУЄМО НАЗВУ
+    document.querySelectorAll('.color-option').forEach(opt => { 
+        opt.onclick = () => { 
+            const groupName = prompt("Введіть назву для цієї папки/групи:", "Нова папка");
+            if (groupName === null) return; // Натиснули Відміна
 
-    allNotes.forEach(note => {
-        const id = note.dataset.id;
-        const text = note.querySelector('.note-card div')?.innerText.substring(0, 25) || "📎 Медіа нотатка";
-        
-        const item = document.createElement('div');
-        item.style.cssText = 'padding: 10px; margin-bottom: 5px; background: rgba(255,255,255,0.05); border-radius: 8px; cursor: pointer; font-size: 13px;';
-        item.innerText = text + '...';
-        
-        item.onclick = () => {
-            saveNoteToFolder(folderName, id);
-            selectModal.style.display = 'none';
-        };
-        selectContent.appendChild(item);
+            groups.push({ 
+                id: 'g' + Date.now(), 
+                color: opt.dataset.color,
+                name: groupName || "Нова папка" 
+            }); 
+            colorModal.classList.remove('active'); 
+            saveData();
+            renderAll(); 
+        }; 
     });
 
-    const close = document.createElement('button');
-    close.innerText = 'Закрити';
-    close.style.cssText = 'margin-top: 15px; background: none; border: 1px solid white; color: white; padding: 5px 10px; border-radius: 10px; cursor: pointer;';
-    close.onclick = () => selectModal.style.display = 'none';
-    selectContent.appendChild(close);
-
-    selectModal.style.display = 'flex';
-}
-
-// 6. Збереження та Видалення (База даних)
-function saveNoteToFolder(folderName, noteId) {
-    let mapping = JSON.parse(localStorage.getItem('folderNoteMapping') || '{}');
-    if (!mapping[folderName]) mapping[folderName] = [];
-    if (!mapping[folderName].includes(noteId)) mapping[folderName].push(noteId);
-    localStorage.setItem('folderNoteMapping', JSON.stringify(mapping));
-    refreshFolders();
-}
-
-function removeNoteFromFolder(folderName, noteId) {
-    let mapping = JSON.parse(localStorage.getItem('folderNoteMapping') || '{}');
-    if (mapping[folderName]) {
-        mapping[folderName] = mapping[folderName].filter(id => id !== noteId);
-        localStorage.setItem('folderNoteMapping', JSON.stringify(mapping));
+    function ungroup(gid) { 
+        folders.forEach(f => { if (f.groupId === gid) f.groupId = null; }); 
+        groups = groups.filter(g => g.id !== gid); 
+        saveData();
+        renderAll(); 
     }
-    refreshFolders();
-}
 
-function refreshFolders() {
-    document.querySelectorAll('.folder').forEach(folderDiv => {
-        const name = folderDiv.querySelector('p')?.innerText.trim();
-        if (name) renderSidebarNotes(folderDiv, name);
-    });
-}
+    document.getElementById('createFolderBtn').onclick = (e) => { 
+        e.stopPropagation();
+        e.preventDefault();
+        const cur = folders.find(f => f.id === activeFolderId); 
+        const gid = cur ? cur.groupId : null; 
+        const newId = Date.now(); 
+        const name = prompt("Введіть назву нотатки:", "Нова нотатка");
+        if (!name || name.trim() === '') return;
+        
+        folders.push({ id: newId, name: name.trim(), groupId: gid, isFavorite: false }); 
+        activeFolderId = newId; 
+        saveData();
+        renderAll(); 
+    };
 
-// Запуск системи через MutationObserver (щоб працювало і для нових папок)
-const plusObs = new MutationObserver(() => injectPlusButtons());
-plusObs.observe(document.querySelector('.folder_div'), { childList: true });
-injectPlusButtons(); 
-assignNoteIds();
+    // ЗАВАНТАЖЕННЯ ЗАМІТКИ
+    function downloadNote(folder) {
+        const folderMessages = messages.filter(m => m.folderId === folder.id);
+        let contentHtml = '';
+        folderMessages.forEach(msg => { 
+            if (msg.type === 'text') contentHtml += `<p>${msg.text}</p>`; 
+            if (msg.type === 'image') contentHtml += `<img src="${msg.content}" style="max-width:100%"><br>`; 
+            if (msg.type === 'table') contentHtml += `<div>${msg.content}</div><br>`;
+            if (msg.type === 'file') contentHtml += `<p>Файл: ${msg.content.name}</p>`;
+        });
+        const blob = new Blob([`<h1>${folder.name}</h1>${contentHtml}`], { type: 'text/html' });
+        const a = document.createElement('a'); 
+        a.href = URL.createObjectURL(blob); 
+        a.download = `${folder.name}.html`; 
+        a.click();
+    }
+
+    // --- АНІМОВАНИЙ BACKGROUND ---
+    const canvas = document.getElementById('animatedBackground');
+    const ctx = canvas.getContext('2d');
+    
+    const particles = [];
+    const particleCount = 80;
+    const maxDistance = 150;
+    
+    class Particle {
+        constructor() {
+            this.x = Math.random() * canvas.width;
+            this.y = Math.random() * canvas.height;
+            this.vx = (Math.random() - 0.5) * 0.5;
+            this.vy = (Math.random() - 0.5) * 0.5;
+            this.radius = Math.random() * 2 + 1;
+        }
+        
+        update() {
+            this.x += this.vx;
+            this.y += this.vy;
+            
+            if (this.x < 0 || this.x > canvas.width) this.vx *= -1;
+            if (this.y < 0 || this.y > canvas.height) this.vy *= -1;
+        }
+        
+        draw() {
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+            ctx.fillStyle = document.body.classList.contains('dark-mode') 
+                ? 'rgba(100, 200, 255, 0.8)' 
+                : 'rgba(64, 201, 255, 0.6)';
+            ctx.fill();
+        }
+    }
+    
+    function initParticles() {
+        particles.length = 0;
+        for (let i = 0; i < particleCount; i++) {
+            particles.push(new Particle());
+        }
+    }
+    
+    function resizeCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        initParticles();
+    }
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+    
+    function animate() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        particles.forEach(p => {
+            p.update();
+            p.draw();
+        });
+        
+        for (let i = 0; i < particles.length; i++) {
+            for (let j = i + 1; j < particles.length; j++) {
+                const dx = particles[i].x - particles[j].x;
+                const dy = particles[i].y - particles[j].y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance < maxDistance) {
+                    ctx.beginPath();
+                    ctx.moveTo(particles[i].x, particles[i].y);
+                    ctx.lineTo(particles[j].x, particles[j].y);
+                    const opacity = (1 - distance / maxDistance) * 0.3;
+                    ctx.strokeStyle = document.body.classList.contains('dark-mode')
+                        ? `rgba(100, 200, 255, ${opacity})`
+                        : `rgba(64, 201, 255, ${opacity})`;
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                }
+            }
+        }
+        
+        requestAnimationFrame(animate);
+    }
+    animate();
+    renderAll();
 });
-
-
-
-
-
